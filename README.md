@@ -1,7 +1,7 @@
 # FLEE
 <div align="center">
 
-<img src="icon-192.png" alt="FLEE App Icon" width="96" height="96" style="border-radius: 22px;" />
+<img src="/Users/khiwe/Downloads/Websites/life-rpg/icon-192.png" alt="FLEE App Icon" width="96" height="96" style="border-radius: 22px;" />
 
 # FLEE
 
