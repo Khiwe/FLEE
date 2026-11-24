@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="FLEE"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#ffffff"/>
+<link rel="manifest" href="manifest.json?v=flame2"/>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=flame2"/>
+<link rel="apple-touch-icon" href="icon-192.png?v=flame2"/>
+<title>FLEE</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+<style>
+  html, body { margin: 0; background: #ffffff; color: #111111; font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
+  body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; min-height: 100dvh; }
+  .font-display { font-family: 'Space Grotesk', 'Geist', sans-serif; }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+  ::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+  #breath-circle { transition: transform 2.5s ease-in-out; }
+  .toast-show { opacity: 1 !important; transform: translate(-50%, 0) !important; }
+  .shake { animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+</style>
+</head>
+<body class="bg-white text-[#111111] antialiased">
+
+<!-- Header -->
+<header class="fixed top-0 inset-x-0 z-40 pt-safe bg-white/90 backdrop-blur-md border-b border-[#e5e5ea]">
+  <div class="max-w-md mx-auto h-14 px-5 flex items-center justify-between" id="header"></div>
+</header>
+
+<!-- Active view -->
+<main id="view" class="max-w-md mx-auto w-full pt-20 pb-28 px-5"></main>
+
+<!-- Bottom nav -->
+<nav class="fixed bottom-0 inset-x-0 z-40 pb-safe bg-white/95 backdrop-blur-md border-t border-[#e5e5ea]">
+  <div class="max-w-md mx-auto h-16 px-4 flex items-center justify-around" id="nav"></div>
+</nav>
+
+<!-- SOS breathing modal -->
+<div id="sos" class="fixed inset-0 z-50 bg-[#111111]/40 backdrop-blur-sm hidden items-center justify-center p-6">
+  <div class="w-full max-w-xs bg-white border border-[#e5e5ea] rounded-2xl p-6 flex flex-col items-center text-center shadow-xl">
+    <div class="text-xs uppercase font-medium text-[#66666e] tracking-wider mb-1">Breathing Anchor</div>
+    <h3 class="font-display font-bold text-xl">Take a Moment</h3>
+    <p class="text-xs text-[#66666e] mt-1.5 mb-6">Urges typically subside within 90 seconds. Focus on the breath.</p>
+    <div class="w-28 h-28 mb-6 flex items-center justify-center bg-[#f8f8fa] border border-[#e5e5ea] rounded-full">
+      <div id="breath-circle" class="w-16 h-16 bg-[#fff7ed] border border-[#fed7aa] rounded-full flex items-center justify-center">
+        <span id="breath-text" class="text-xs font-semibold text-[#e11d2e]">Inhale</span>
+      </div>
+    </div>
+    <div class="w-full grid grid-cols-2 gap-2">
+      <button class="bg-[#f8f8fa] border border-[#e5e5ea] text-xs font-medium py-2.5 rounded-xl" onclick="closeSOS()">Close</button>
+      <button class="bg-[#111111] text-white text-xs font-medium py-2.5 rounded-xl" onclick="completeSOS()">Urge Passed</button>
+    </div>
+  </div>
+</div>
+
+<!-- Slip reflection sheet -->
+<div id="slip-sheet" class="fixed inset-0 z-50 bg-[#111111]/40 backdrop-blur-sm hidden items-end sm:items-center justify-center">
+  <div class="w-full max-w-md bg-white border-t sm:border border-[#e5e5ea] rounded-t-3xl sm:rounded-2xl p-6 pb-safe shadow-2xl space-y-5">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="text-xs uppercase font-semibold text-[#f97316] tracking-wider mb-1">Reset &amp; Learn</div>
+        <h3 class="font-display font-bold text-xl" id="slip-title">That happens.</h3>
+        <p class="text-xs text-[#66666e] mt-1">Your total clean days and best streak stay intact. Let's log what triggered it.</p>
+      </div>
+      <button aria-label="Close" class="w-8 h-8 rounded-full hover:bg-neutral-100 flex items-center justify-center text-[#66666e]" onclick="closeSlip()">✕</button>
+    </div>
+
+    <!-- Trigger picker -->
+    <div class="space-y-2">
+      <label class="text-[11px] font-semibold uppercase tracking-wider text-[#66666e]">What triggered it?</label>
+      <div id="slip-triggers" class="grid grid-cols-3 gap-2"></div>
+    </div>
+
+    <!-- Optional plan update -->
+    <div class="space-y-1.5">
+      <label class="text-[11px] font-semibold uppercase tracking-wider text-[#66666e]" for="slip-then">Next time this happens, instead I will...</label>
+      <input id="slip-then" type="text" placeholder="e.g. Take 5 deep breaths or step outside" class="w-full bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl px-3.5 py-2.5 text-sm placeholder:text-[#a1a1aa] focus:outline-none focus:border-[#111111]"/>
+    </div>
+
+    <!-- Next 24h recovery prompt -->
+    <div class="space-y-2">
+      <label class="text-[11px] font-semibold uppercase tracking-wider text-[#66666e]">Next 24h recovery</label>
+      <div id="slip-recovery" class="grid grid-cols-3 gap-2"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="pt-1 flex flex-col gap-2" id="slip-actions"></div>
+  </div>
+</div>
+
+<!-- New habit screen -->
+<div id="new" class="fixed inset-0 z-50 bg-white hidden flex-col overflow-y-auto">
+  <header class="sticky top-0 z-30 pt-safe bg-white/90 backdrop-blur-md border-b border-[#f0f0f2]">
+    <div class="max-w-md mx-auto h-14 px-5 flex items-center justify-between">
+      <button aria-label="Back" class="w-9 h-9 -ml-1.5 flex items-center justify-center rounded-full hover:bg-neutral-100" onclick="closeNew()" id="new-back"></button>
+      <h1 id="new-title" class="text-[16px] font-medium tracking-tight">New Habit</h1>
+      <button aria-label="Close" class="w-9 h-9 -mr-1.5 flex items-center justify-center rounded-full hover:bg-neutral-100" onclick="closeNew()" id="new-close"></button>
+    </div>
+  </header>
+  <div class="flex-1 w-full max-w-md mx-auto px-5 py-6 flex flex-col gap-7 pb-32">
+    <div class="bg-[#f4f4f6] p-1 rounded-full flex gap-1 items-center">
+      <button id="toggle-build" class="flex-1 py-2 rounded-full text-[13px] font-medium transition-all" onclick="setMode('build')">Build</button>
+      <button id="toggle-break" class="flex-1 py-2 rounded-full text-[13px] font-medium transition-all" onclick="setMode('break')">Break</button>
+    </div>
+    <div class="flex flex-col gap-2">
+      <label class="text-[12px] font-medium text-[#71717a] uppercase tracking-wider" for="habit-input">Habit Name</label>
+      <input id="habit-input" type="text" autocomplete="off" class="w-full bg-[#f8f8fa] border border-[#e5e5ea] rounded-2xl px-4 py-3.5 text-[16px] placeholder:text-[#a1a1aa] focus:outline-none focus:border-[#111111] transition-colors"/>
+    </div>
+    <div class="flex flex-col gap-2.5">
+      <label class="text-[12px] font-medium text-[#71717a] uppercase tracking-wider">Category</label>
+      <div id="cat-row" class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5"></div>
+    </div>
+    <div class="flex flex-col gap-3">
+      <label class="text-[12px] font-medium text-[#71717a] uppercase tracking-wider">Routine Trigger</label>
+      <div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-2xl p-4 flex flex-col gap-3">
+        <div class="flex flex-col gap-1.5">
+          <span id="when-label" class="text-[12px] text-[#71717a] font-medium">When I...</span>
+          <input id="when-input" type="text" class="w-full bg-white border border-[#e5e5ea] rounded-xl px-3.5 py-2.5 text-[14px] placeholder:text-[#a1a1aa] focus:outline-none focus:border-[#111111]"/>
+        </div>
+        <div class="flex items-center justify-center -my-1 text-[#a1a1aa]" id="trigger-arrow"></div>
+        <div class="flex flex-col gap-1.5">
+          <span id="then-label" class="text-[12px] text-[#71717a] font-medium">I will...</span>
+          <input id="then-input" type="text" class="w-full bg-white border border-[#e5e5ea] rounded-xl px-3.5 py-2.5 text-[14px] placeholder:text-[#a1a1aa] focus:outline-none focus:border-[#111111]"/>
+        </div>
+      </div>
+    </div>
+    <div class="flex flex-col gap-2.5">
+      <label class="text-[12px] font-medium text-[#71717a] uppercase tracking-wider">Target Milestone</label>
+      <div id="goal-row" class="grid grid-cols-4 gap-2"></div>
+    </div>
+    <div id="delete-habit-wrap" class="hidden pt-2">
+      <button type="button" onclick="deleteEditingHabit()" class="w-full py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 text-xs font-semibold transition-colors">Delete This Habit</button>
+    </div>
+  </div>
+  <div class="fixed bottom-0 inset-x-0 p-5 bg-gradient-to-t from-white via-white/95 to-white/0 pointer-events-none z-30">
+    <div class="max-w-md mx-auto pointer-events-auto pb-safe">
+      <button id="cta-btn" class="w-full py-4 bg-[#111111] hover:bg-neutral-800 active:scale-[0.99] text-white rounded-full font-medium text-[15px] flex items-center justify-center gap-2 transition-all shadow-md" onclick="createHabit()"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Phone Install Modal -->
+<div id="phone-modal" class="fixed inset-0 z-50 bg-[#111111]/40 backdrop-blur-sm hidden items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="w-full max-w-md bg-white border-t sm:border border-[#e5e5ea] rounded-t-3xl sm:rounded-2xl p-6 pb-safe shadow-2xl space-y-4">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="text-[11px] uppercase font-semibold text-[#e11d2e] tracking-wider mb-0.5">Add to Home Screen</div>
+        <h3 class="font-display font-bold text-xl">Install FLEE</h3>
+        <p class="text-xs text-[#66666e] mt-0.5">Install as a standalone full-screen app on your phone</p>
+      </div>
+      <button aria-label="Close" class="w-8 h-8 rounded-full hover:bg-neutral-100 flex items-center justify-center text-[#66666e]" onclick="closePhoneModal()">✕</button>
+    </div>
+
+    <button id="https-btn" type="button" onclick="triggerNativeInstall()" class="w-full py-4 bg-gradient-to-r from-[#e11d2e] to-[#f97316] hover:opacity-95 active:scale-[0.99] text-white rounded-2xl text-sm font-display font-bold flex items-center justify-center gap-2 shadow-md transition-all">
+      <span>📲 Tap Here to Install App Now</span>
+    </button>
+
+    <div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-2xl p-4 space-y-2 text-left">
+      <div class="text-xs font-semibold text-[#111111]">Or from your browser menu:</div>
+      <p class="text-xs text-[#66666e] leading-relaxed">1. Tap the <b class="text-[#111111]">⋮</b> menu in the top-right of Chrome (or <b class="text-[#111111]">Share</b> in Safari).<br/>2. Tap <b class="text-[#111111]">Install app</b> or <b class="text-[#111111]">Add to Home screen</b>.</p>
+    </div>
+
+    <div class="pt-1 flex gap-2">
+      <button onclick="closePhoneModal()" class="w-full py-3 bg-[#111111] text-white rounded-xl text-xs font-semibold transition-colors">
+        Done
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile / Account Modal -->
+<div id="profile-modal" class="fixed inset-0 z-50 bg-[#111111]/40 backdrop-blur-sm hidden items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="w-full max-w-md bg-white border-t sm:border border-[#e5e5ea] rounded-t-3xl sm:rounded-2xl p-6 pb-safe shadow-2xl space-y-5">
+    <div class="flex items-start justify-between">
+      <div class="flex items-center gap-3">
+        <div id="prof-avatar" class="w-11 h-11 rounded-full bg-[#111111] text-white font-display font-bold text-base flex items-center justify-center">U</div>
+        <div>
+          <h3 id="prof-name" class="font-display font-bold text-lg leading-tight">Your Flow</h3>
+          <p id="prof-email" class="text-xs text-[#66666e]">user@example.com</p>
+        </div>
+      </div>
+      <button aria-label="Close" class="w-8 h-8 rounded-full hover:bg-neutral-100 flex items-center justify-center text-[#66666e]" onclick="closeProfileModal()">✕</button>
+    </div>
+
+    <div class="grid grid-cols-3 gap-2 text-center">
+      <div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl p-3">
+        <div id="prof-streak" class="font-display font-bold text-lg text-[#111111]">0d 🔥</div>
+        <div class="text-[10px] uppercase tracking-wider font-semibold text-[#8e8e93] mt-0.5">Streak</div>
+      </div>
+      <div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl p-3">
+        <div id="prof-habits" class="font-display font-bold text-lg text-[#111111]">0</div>
+        <div class="text-[10px] uppercase tracking-wider font-semibold text-[#8e8e93] mt-0.5">Habits</div>
+      </div>
+      <div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl p-3">
+        <div id="prof-best" class="font-display font-bold text-lg text-[#e11d2e]">0d</div>
+        <div class="text-[10px] uppercase tracking-wider font-semibold text-[#8e8e93] mt-0.5">Best</div>
+      </div>
+    </div>
+
+    <div class="space-y-2">
+      <button onclick="syncNow()" class="w-full py-3 bg-[#f8f8fa] hover:bg-neutral-200/70 border border-[#e5e5ea] text-[#111111] rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors">
+        <span>Sync My Progress Across Devices</span>
+      </button>
+      <button onclick="clearAll();closeProfileModal()" class="w-full py-3 bg-[#f8f8fa] hover:bg-neutral-200/70 border border-[#e5e5ea] text-[#66666e] rounded-xl text-xs font-semibold transition-colors">
+        Reset My Habits (Start Empty)
+      </button>
+      <button onclick="logoutUser()" class="w-full py-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold transition-colors">
+        Sign Out / Switch Email
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Email / Member Auth Screen -->
+<div id="auth-screen" class="fixed inset-0 z-[55] bg-white hidden flex-col justify-between p-6 overflow-y-auto">
+  <div class="max-w-sm w-full mx-auto pt-10 space-y-7 my-auto">
+    <div class="space-y-3 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-[#111111] mx-auto flex items-center justify-center shadow-md">
+        <svg class="w-10 h-10" viewBox="0 0 100 100" fill="none">
+          <defs>
+            <linearGradient id="fleeFlameGrad" x1="50" y1="13" x2="50" y2="85" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#ff8a24"/>
+              <stop offset="50%" stop-color="#f95716"/>
+              <stop offset="100%" stop-color="#e11d2e"/>
+            </linearGradient>
+            <linearGradient id="fleeCoreGrad" x1="50" y1="39" x2="50" y2="81" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#ffd646"/>
+              <stop offset="100%" stop-color="#fb8518"/>
+            </linearGradient>
+          </defs>
+          <path d="M50 84C30 84 20 69 22 53C24 37 37 24 48 13C46 25 49 33 55 38C58 31 62 26 66 22C77 35 80 50 78 61C75 75 65 84 50 84Z" fill="url(#fleeFlameGrad)"/>
+          <path d="M50 81C39 81 34 72 36 61C38 51 44 45 51 39C58 46 65 55 64 64C63 74 58 81 50 81Z" fill="url(#fleeCoreGrad)"/>
+        </svg>
+      </div>
+      <h1 class="font-display font-bold text-2xl tracking-tight text-[#111111]">FLEE</h1>
+      <p class="text-xs text-[#66666e] max-w-xs mx-auto leading-relaxed">Tap below to jump into your personal habit flow and track your streaks from Day 1.</p>
+    </div>
+
+    <div class="space-y-3">
+      <button type="button" onclick="quickMemberLogin()" class="w-full py-4 bg-[#111111] hover:bg-neutral-800 active:scale-[0.99] text-white rounded-2xl font-display font-bold text-base flex items-center justify-center gap-2.5 shadow-md transition-all">
+        <span class="w-6 h-6 rounded-full bg-gradient-to-br from-[#e11d2e] to-[#f97316] text-white text-xs font-bold flex items-center justify-center">M</span>
+        <span>Continue as Member</span>
+        <span>→</span>
+      </button>
+    </div>
+
+    <div class="relative flex items-center py-1">
+      <div class="flex-grow border-t border-[#e5e5ea]"></div>
+      <span class="shrink-0 mx-3 text-[11px] uppercase tracking-wider font-semibold text-[#8e8e93]">or use custom email</span>
+      <div class="flex-grow border-t border-[#e5e5ea]"></div>
+    </div>
+
+    <form onsubmit="submitEmailLogin(event)" class="space-y-3">
+      <input id="auth-email" type="email" required autocomplete="email" placeholder="you@example.com" class="w-full bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl px-4 py-3 text-sm text-[#111111] placeholder:text-[#a1a1aa] focus:outline-none focus:border-[#111111]"/>
+      <input id="auth-name" type="text" autocomplete="name" placeholder="Your Name (optional)" class="w-full bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl px-4 py-3 text-sm text-[#111111] placeholder:text-[#a1a1aa] focus:outline-none focus:border-[#111111]"/>
+      <input id="auth-pin" type="password" autocomplete="current-password" placeholder="Optional PIN" class="hidden"/>
+      <p id="auth-err" class="text-xs text-rose-600 font-medium hidden"></p>
+      <button type="submit" id="auth-submit-btn" class="w-full py-3 bg-[#f8f8fa] hover:bg-neutral-200/70 border border-[#e5e5ea] text-[#111111] rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-all">
+        <span>Sign in with Email</span>
+      </button>
+    </form>
+  </div>
+  <p class="text-[11px] text-center text-[#8e8e93] pb-safe pt-4">Starts empty so you build and track your own habits from Day 1.</p>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed left-1/2 bottom-24 z-[60] px-4 py-2 rounded-full bg-[#111111] text-white text-xs font-medium shadow-lg opacity-0 transition-all duration-200 pointer-events-none" style="transform: translate(-50%, 8px)"></div>
+
+<script>
+/* ---------- Icons (inline SVG) ---------- */
+const ICONS = {
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  plus: '<path d="M5 12h14M12 5v14"/>',
+  chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/>',
+  circleCheck: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  circleMinus: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>',
+  bolt: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
+  wind: '<path d="M12.8 19.6A2 2 0 1 0 14 16H2M17.5 8a2.5 2.5 0 1 1 2 4H2M9.8 4.4A2 2 0 1 1 11 8H2"/>',
+  lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  medal: '<path d="M7.2 15 2.7 7.1a2 2 0 0 1 .1-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.1a2 2 0 0 1 .1 2.2L16.8 15"/><circle cx="12" cy="17" r="5"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  arrowRight: '<path d="M5 12h14m-7-7 7 7-7 7"/>',
+  arrowLeft: '<path d="M19 12H5m7-7-7 7 7 7"/>',
+  arrowDown: '<path d="M12 5v14m7-7-7 7-7-7"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+  phone: '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
+  edit: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14"/>'
+};
+function ic(name, cls = 'w-5 h-5', fill = false) {
+  return `<svg class="${cls}" viewBox="0 0 24 24" fill="${fill ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+}
+
+/* ---------- Date helpers ---------- */
+const DAY = 864e5;
+const pad = n => String(n).padStart(2, '0');
+const dk = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const agoKey = n => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n); return dk(d); };
+const parseKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const diffDays = (a, b) => Math.round((parseKey(b) - parseKey(a)) / DAY);
+const todayKey = () => agoKey(0);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+/* ---------- Persistent Storage (Per-Device Private Storage + IndexedDB) ---------- */
+const SESSION_KEY = 'habitloop_current_user_v1';
+const MASTER_KEY = 'habitloop_master_backup_v1';
+const DEVICE_ID_KEY = 'habitloop_device_id_v1';
+const acctKey = email => 'habitloop_acct_' + String(email || '').trim().toLowerCase();
+
+function getDeviceId() {
+  let id = null;
+  try { id = localStorage.getItem(DEVICE_ID_KEY); } catch (e) {}
+  if (!id) {
+    id = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+    try { localStorage.setItem(DEVICE_ID_KEY, id); } catch (e) {}
+  }
+  return id;
+}
+function isDeviceOnlyUser(u) {
+  return !!(u && (u.deviceOnly || String(u.email || '').endsWith('@device.local')));
+}
+
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().catch(() => {});
+}
+
+function idbSave(key, val) {
+  try {
+    const req = indexedDB.open('HabitLoopDB', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+    req.onsuccess = e => {
+      const db = e.target.result;
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(val, key);
+    };
+  } catch (e) {}
+}
+
+function idbLoad(key) {
+  return new Promise(resolve => {
+    try {
+      const req = indexedDB.open('HabitLoopDB', 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+      req.onsuccess = e => {
+        const db = e.target.result;
+        const g = db.transaction('kv', 'readonly').objectStore('kv').get(key);
+        g.onsuccess = () => resolve(g.result || null);
+        g.onerror = () => resolve(null);
+      };
+      req.onerror = () => resolve(null);
+    } catch (e) { resolve(null); }
+  });
+}
+
+function mergeHabitsClient(localList, remoteList, remoteIsNewer) {
+  if (!remoteList || !remoteList.length) return localList || [];
+  if (!localList || !localList.length) return remoteList || [];
+  const byId = {};
+  localList.forEach(h => { if (h && h.id) byId[h.id] = JSON.parse(JSON.stringify(h)); });
+  const seen = new Set();
+  const out = [];
+  remoteList.forEach(rem => {
+    if (!rem || !rem.id) return;
+    seen.add(rem.id);
+    if (byId[rem.id]) {
+      const loc = byId[rem.id];
+      const base = JSON.parse(JSON.stringify(remoteIsNewer ? rem : loc));
+      if (base.type === 'build') {
+        base.log = Object.assign({}, loc.log || {}, rem.log || {});
+      } else {
+        base.bestClean = Math.max(loc.bestClean || 0, rem.bestClean || 0);
+        base.bankedClean = Math.max(loc.bankedClean || 0, rem.bankedClean || 0);
+        base.urges = Math.max(loc.urges || 0, rem.urges || 0);
+        base.slips = Math.max(loc.slips || 0, rem.slips || 0);
+      }
+      out.push(base);
+    } else {
+      out.push(JSON.parse(JSON.stringify(rem)));
+    }
+  });
+  localList.forEach(loc => {
+    if (loc && loc.id && !seen.has(loc.id)) out.push(JSON.parse(JSON.stringify(loc)));
+  });
+  return out;
+}
+
+function loadSession() {
+  try {
+    const r = localStorage.getItem(SESSION_KEY);
+    if (!r) {
+      if (localStorage.getItem('habitloop_signed_out') === '1') return null;
+      const devId = getDeviceId();
+      const autoUser = {
+        email: 'member_' + devId + '@device.local',
+        name: 'Member',
+        pin: '',
+        deviceOnly: true,
+        createdAt: todayKey()
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(autoUser));
+      return autoUser;
+    }
+    const u = JSON.parse(r);
+    // Migrate old shared member@habitloop.app to private per-device member account
+    if (u && u.email === 'member@habitloop.app') {
+      const devEmail = 'member_' + getDeviceId() + '@device.local';
+      const oldData = localStorage.getItem(acctKey('member@habitloop.app'));
+      if (oldData && !localStorage.getItem(acctKey(devEmail))) {
+        localStorage.setItem(acctKey(devEmail), oldData);
+      }
+      u.email = devEmail;
+      u.deviceOnly = true;
+      localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+    }
+    return u;
+  } catch (e) { return null; }
+}
+function saveSession(u) {
+  try {
+    if (u) {
+      localStorage.removeItem('habitloop_signed_out');
+      localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+      idbSave(SESSION_KEY, u);
+    } else {
+      localStorage.setItem('habitloop_signed_out', '1');
+      localStorage.removeItem(SESSION_KEY);
+      idbSave(SESSION_KEY, null);
+    }
+  } catch (e) {}
+}
+
+let U = loadSession(); // { email, name, pin, createdAt }
+let S = load();
+
+function load() {
+  if (!U || !U.email) return { habits: [], updatedAt: 0 };
+  try {
+    const r = localStorage.getItem(acctKey(U.email)) || localStorage.getItem(MASTER_KEY);
+    if (r) {
+      const parsed = JSON.parse(r);
+      if (parsed && Array.isArray(parsed.habits)) return parsed;
+    }
+  } catch (e) {}
+  return { habits: [], updatedAt: 0 };
+}
+
+function save(skipSync, forceClear) {
+  if (!U || !U.email) return;
+  S.updatedAt = Date.now();
+  try {
+    const raw = JSON.stringify(S);
+    localStorage.setItem(acctKey(U.email), raw);
+    localStorage.setItem(MASTER_KEY, raw);
+    idbSave(acctKey(U.email), S);
+    idbSave(MASTER_KEY, S);
+  } catch (e) {}
+  if (!skipSync) syncCloud(!!forceClear);
+}
+
+async function restoreFromBackupIfNeeded() {
+  const savedDevId = await idbLoad(DEVICE_ID_KEY);
+  if (savedDevId) {
+    try { if (!localStorage.getItem(DEVICE_ID_KEY)) localStorage.setItem(DEVICE_ID_KEY, savedDevId); } catch (e) {}
+  } else {
+    idbSave(DEVICE_ID_KEY, getDeviceId());
+  }
+  if (!U) {
+    const idbUser = await idbLoad(SESSION_KEY);
+    if (idbUser && idbUser.email) {
+      if (idbUser.email === 'member@habitloop.app') {
+        idbUser.email = 'member_' + getDeviceId() + '@device.local';
+        idbUser.deviceOnly = true;
+      }
+      U = idbUser;
+      saveSession(U);
+      S = load();
+    }
+  }
+  if (U && U.email) {
+    const idbState = await idbLoad(acctKey(U.email)) || await idbLoad(MASTER_KEY);
+    if (idbState && Array.isArray(idbState.habits) && idbState.habits.length > (S.habits || []).length) {
+      S = idbState;
+      save(true);
+      render();
+    }
+    syncCloud();
+  }
+}
+
+async function syncCloud(forceClear) {
+  if (!U || !U.email || isDeviceOnlyUser(U)) return;
+  try {
+    const r = await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: U.email,
+        name: U.name,
+        pin: U.pin || '',
+        createdAt: U.createdAt || todayKey(),
+        updatedAt: S.updatedAt || Date.now(),
+        habits: S.habits || [],
+        forceClear: !!forceClear
+      })
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d && d.user && Array.isArray(d.user.habits)) {
+      if (!forceClear && d.user.habits.length > 0) {
+        const remoteNewer = (d.user.updatedAt || 0) >= (S.updatedAt || 0);
+        S.habits = mergeHabitsClient(S.habits || [], d.user.habits, remoteNewer);
+        S.updatedAt = Math.max(S.updatedAt || 0, d.user.updatedAt || 0);
+        const raw = JSON.stringify(S);
+        localStorage.setItem(acctKey(U.email), raw);
+        localStorage.setItem(MASTER_KEY, raw);
+        idbSave(acctKey(U.email), S);
+        idbSave(MASTER_KEY, S);
+        render();
+      }
+    }
+  } catch (e) {}
+}
+
+async function syncNow() {
+  if (isDeviceOnlyUser(U)) {
+    save(true);
+    toast('Saved privately on this phone');
+    closeProfileModal();
+    return;
+  }
+  await syncCloud();
+  toast('Progress synced');
+  closeProfileModal();
+}
+
+async function quickMemberLogin() {
+  const devId = getDeviceId();
+  idbSave(DEVICE_ID_KEY, devId);
+  const devEmail = 'member_' + devId + '@device.local';
+  let localData = null;
+  try {
+    const raw = localStorage.getItem(acctKey(devEmail));
+    if (raw) localData = JSON.parse(raw);
+  } catch (e) {}
+  if (!localData) {
+    const idbData = await idbLoad(acctKey(devEmail));
+    if (idbData && Array.isArray(idbData.habits)) localData = idbData;
+  }
+  U = {
+    email: devEmail,
+    name: 'Member',
+    pin: '',
+    deviceOnly: true,
+    createdAt: (localData && localData.createdAt) || todayKey()
+  };
+  S = localData && Array.isArray(localData.habits)
+    ? { ...localData, name: 'Member' }
+    : { habits: [], updatedAt: Date.now(), name: 'Member', createdAt: U.createdAt };
+  saveSession(U);
+  save(true);
+  render();
+  toast('Saved privately on this device');
+}
+
+async function submitEmailLogin(e) {
+  e.preventDefault();
+  const emailEl = document.getElementById('auth-email');
+  const nameEl = document.getElementById('auth-name');
+  const pinEl = document.getElementById('auth-pin');
+  const errEl = document.getElementById('auth-err');
+  errEl.classList.add('hidden');
+
+  const email = (emailEl.value || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Please enter a valid email address.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  const rawName = (nameEl.value || '').trim();
+  const defaultName = rawName || email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const pin = (pinEl.value || '').trim();
+
+  // Check local account first
+  let localData = null;
+  try {
+    const raw = localStorage.getItem(acctKey(email));
+    if (raw) localData = JSON.parse(raw);
+  } catch (err) {}
+
+  if (localData && localData.pin && localData.pin !== pin) {
+    errEl.textContent = 'Incorrect PIN/password for this email.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  // Try server login/sync if reachable
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name: rawName, pin, today: todayKey(), updatedAt: localData ? (localData.updatedAt || 0) : 0 })
+    });
+    if (r.status === 403) {
+      const d = await r.json();
+      errEl.textContent = d.error || 'Incorrect PIN/password.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    if (r.ok) {
+      const d = await r.json();
+      if (d && d.user) {
+        const srv = d.user;
+        const useServer = !localData || (srv.updatedAt || 0) >= (localData.updatedAt || 0);
+        U = { email, name: srv.name || defaultName, pin, createdAt: srv.createdAt || todayKey() };
+        S = useServer ? { habits: srv.habits || [], updatedAt: srv.updatedAt || Date.now(), pin } : { ...localData, pin };
+        saveSession(U);
+        save(true);
+        syncCloud();
+        render();
+        toast('Welcome, ' + U.name);
+        return;
+      }
+    }
+  } catch (err) {}
+
+  // Offline / standalone fallback: starts completely empty for a new email
+  U = { email, name: (localData && localData.name) || defaultName, pin, createdAt: (localData && localData.createdAt) || todayKey() };
+  S = localData && Array.isArray(localData.habits) ? { ...localData, name: U.name, pin } : { habits: [], updatedAt: Date.now(), name: U.name, pin, createdAt: U.createdAt };
+  saveSession(U);
+  save(true);
+  render();
+  toast('Welcome, ' + U.name);
+}
+
+function openProfileModal() {
+  if (!U) return;
+  document.getElementById('prof-avatar').textContent = (U.name || U.email || 'U').charAt(0).toUpperCase();
+  document.getElementById('prof-name').textContent = U.name || U.email.split('@')[0];
+  document.getElementById('prof-email').textContent = isDeviceOnlyUser(U) ? '🔒 Saved privately on this phone only' : U.email;
+  document.getElementById('prof-streak').textContent = curStreak() + 'd 🔥';
+  document.getElementById('prof-habits').textContent = String(S.habits.length);
+  document.getElementById('prof-best').textContent = Math.max(bestStreak(), curStreak()) + 'd';
+  const m = document.getElementById('profile-modal');
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+}
+function closeProfileModal() {
+  const m = document.getElementById('profile-modal');
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+}
+function logoutUser() {
+  closeProfileModal();
+  U = null;
+  S = { habits: [], updatedAt: 0 };
+  saveSession(null);
+  render();
+}
+
+/* ---------- Derived data ---------- */
+const builds = () => S.habits.filter(h => h.type === 'build');
+const breaks = () => S.habits.filter(h => h.type === 'break');
+const cleanDays = h => Math.max(0, diffDays(h.cleanSince, todayKey()));
+const bestClean = h => Math.max(h.bestClean || 0, cleanDays(h));
+const lifetimeClean = h => (h.bankedClean || 0) + cleanDays(h);
+const monthKey = k => k.slice(0, 7);
+const graceAvailable = h => (h.lastGraceMonth || '') !== monthKey(todayKey());
+const hadSlipOn = key => breaks().some(h => (h.slipLog || []).some(s => s.date === key));
+function habitStreak(h) {
+  let i = h.log[todayKey()] ? 0 : 1, n = 0;
+  while (h.log[agoKey(i + n)] && n < 3650) n++;
+  return n;
+}
+function status(key) {
+  const el = builds().filter(h => h.created <= key);
+  if (!el.length) return 'none';
+  const done = el.filter(h => h.log[key]).length;
+  return done === el.length ? 'full' : done > 0 ? 'partial' : 'none';
+}
+const active = key => status(key) !== 'none';
+function curStreak() {
+  let i = active(todayKey()) ? 0 : 1, n = 0;
+  while (active(agoKey(i + n)) && n < 3650) n++;
+  return n;
+}
+function bestStreak() {
+  let best = 0, run = 0;
+  for (let i = 400; i >= 0; i--) { if (active(agoKey(i))) { run++; best = Math.max(best, run); } else run = 0; }
+  return best;
+}
+
+/* ---------- Navigation ---------- */
+let view = 'today';
+function setView(v) { view = v; render(); window.scrollTo(0, 0); }
+function renderNav() {
+  const item = (v, icon, label, flame) => {
+    const on = view === v;
+    const color = on ? 'text-[#111111]' : 'text-[#8e8e93] hover:text-[#111111]';
+    const iconColor = flame && on ? 'text-[#f97316]' : '';
+    return `<button class="flex flex-col items-center justify-center min-w-[52px] h-full transition-colors ${color}" onclick="setView('${v}')">
+      <span class="${iconColor}">${ic(icon, 'w-[22px] h-[22px]', flame && on)}</span>
+      <span class="text-[10px] ${on ? 'font-semibold' : 'font-medium'} tracking-tight mt-0.5">${label}</span></button>`;
+  };
+  document.getElementById('nav').innerHTML =
+    item('today', 'circleCheck', 'Today') + item('streaks', 'flame', 'Streaks', true) +
+    `<button aria-label="New habit" class="-mt-5 w-12 h-12 rounded-full bg-[#111111] text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform" onclick="openNew()">${ic('plus', 'w-6 h-6')}</button>` +
+    item('avoid', 'circleMinus', 'Avoid') + item('insights', 'chart', 'Insights');
+}
+let deferredPrompt = null;
+let waitingForInstall = false;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  render();
+  if (waitingForInstall) {
+    waitingForInstall = false;
+    triggerNativeInstall();
+  }
+});
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  waitingForInstall = false;
+  closePhoneModal();
+  render();
+  toast('FLEE installed!');
+});
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function isInsecureHttpOnLan() {
+  return location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+}
+async function triggerNativeInstall() {
+  if (deferredPrompt) {
+    closePhoneModal();
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') deferredPrompt = null;
+    render();
+    return;
+  }
+  toast('Tap ⋮ in Chrome top-right → Install app');
+}
+async function openPhoneModal() {
+  if (deferredPrompt) {
+    await triggerNativeInstall();
+    return;
+  }
+  if (isInsecureHttpOnLan() && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    window.location.href = '/https';
+    return;
+  }
+  waitingForInstall = true;
+  const m = document.getElementById('phone-modal');
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+}
+function closePhoneModal() {
+  waitingForInstall = false;
+  const m = document.getElementById('phone-modal');
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+}
+function renderHeader() {
+  const h = document.getElementById('header');
+  const btnText = 'Install App';
+  const btnColor = 'bg-gradient-to-r from-[#e11d2e] to-[#f97316] hover:opacity-95';
+  const dlBtn = isStandalone() ? '' : `<button onclick="openPhoneModal()" title="${btnText}" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full ${btnColor} text-xs font-semibold text-white transition-colors active:scale-95">${ic('phone', 'w-3.5 h-3.5')}<span>${btnText}</span></button>`;
+  const initial = U ? (U.name || U.email || 'U').charAt(0).toUpperCase() : 'U';
+  const avatar = `<div class="flex items-center gap-2">${dlBtn}<button onclick="openProfileModal()" title="Account &amp; Profile" class="w-8 h-8 rounded-full ring-1 ring-[#e5e5ea] bg-[#111111] text-white flex items-center justify-center text-xs font-bold active:scale-95 transition-transform">${esc(initial)}</button></div>`;
+  if (view === 'today') {
+    h.innerHTML = `<div class="flex items-center space-x-3"><h1 class="text-2xl font-display font-bold tracking-tight">Today</h1>
+      <div class="flex items-center space-x-1 bg-[#fff7ed] text-[#e11d2e] border border-[#ffedd5] px-2.5 py-0.5 rounded-full text-xs font-semibold"><span>🔥</span><span>${curStreak()}</span></div></div>${avatar}`;
+  } else if (view === 'streaks') {
+    h.innerHTML = `<div class="flex items-center gap-2"><span class="text-[#e11d2e]">${ic('flame', 'w-5 h-5', true)}</span><h1 class="font-display font-bold text-lg tracking-tight">Streaks</h1></div>
+      <div class="flex items-center gap-2"><div class="flex items-center gap-1.5 px-2.5 py-1 bg-[#f8f8fa] border border-[#e5e5ea] rounded-full text-xs font-medium text-[#6e6e73]">Best ${Math.max(bestStreak(), curStreak())}d</div>${avatar}</div>`;
+  } else if (view === 'avoid') {
+    h.innerHTML = `<h1 class="font-display font-bold text-xl tracking-tight">Avoid &amp; Break</h1>
+      <div class="flex items-center gap-2"><div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#fff7ed] border border-[#ffedd5] text-[#e11d2e] text-xs font-medium"><span class="w-1.5 h-1.5 rounded-full bg-[#e11d2e]"></span><span>${breaks().length} Active</span></div>${avatar}</div>`;
+  } else {
+    h.innerHTML = `<h1 class="font-display font-bold text-xl tracking-tight">Insights</h1>${avatar}`;
+  }
+}
+
+/* ---------- Views ---------- */
+function render() {
+  const auth = document.getElementById('auth-screen');
+  if (!U || !U.email) {
+    auth.classList.remove('hidden');
+    auth.classList.add('flex');
+    return;
+  }
+  auth.classList.add('hidden');
+  auth.classList.remove('flex');
+  renderHeader(); renderNav();
+  const v = document.getElementById('view');
+  v.innerHTML = view === 'today' ? todayHTML() : view === 'streaks' ? streaksHTML() : view === 'avoid' ? avoidHTML() : insightsHTML();
+}
+
+function todayHTML() {
+  const t = todayKey(), b = builds(), k = breaks();
+  const total = b.length + k.length;
+  const doneN = b.filter(h => h.log[t]).length + k.length;
+  const pct = total ? Math.round(doneN / total * 100) : 0;
+  const C = 175.9, off = C * (1 - pct / 100);
+  const label = total === 0 ? 'Fresh Start' : pct === 100 ? 'Complete' : pct >= 50 ? 'In Flow' : 'Keep Going';
+  const left = total - doneN;
+  const dateStr = new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+  const buildRow = h => {
+    const done = !!h.log[t], s = habitStreak(h);
+    const meta = [ `${s}d 🔥`, h.category || '', h.goal ? `${h.goal}d goal` : '' ].filter(Boolean).join(' · ');
+    const triggerLine = (h.when || h.then)
+      ? `<p class="text-[11px] text-[#66666e] truncate mt-0.5">${h.when ? 'When ' + esc(h.when) : ''}${h.when && h.then ? ' → ' : ''}${h.then ? esc(h.then) : ''}</p>`
+      : '';
+    if (done) return `<div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl px-4 py-3.5 flex items-center justify-between gap-2">
+      <div class="flex items-center space-x-3 min-w-0 flex-1">
+        <button aria-label="Undo" onclick="toggleHabit('${h.id}')" class="w-9 h-9 rounded-full bg-gradient-to-br from-[#e11d2e] to-[#f97316] text-white flex items-center justify-center shrink-0 shadow-sm">${ic('check', 'w-[18px] h-[18px]')}</button>
+        <div onclick="openEdit('${h.id}')" class="min-w-0 flex-1 cursor-pointer"><h3 class="text-sm font-semibold leading-snug truncate">${esc(h.name)}</h3><span class="text-[11px] font-medium text-[#8e8e93]">${meta}</span>${triggerLine}</div></div>
+      <span class="text-xs font-medium text-[#e11d2e] bg-[#fff7ed] border border-[#fed7aa] px-2 py-0.5 rounded-full shrink-0">Done</span></div>`;
+    return `<div class="bg-white border-2 border-[#111111] rounded-xl px-4 py-3.5 flex items-center justify-between gap-2">
+      <div class="flex items-center space-x-3 min-w-0 flex-1">
+        <button aria-label="Complete" onclick="toggleHabit('${h.id}')" class="w-9 h-9 rounded-full border-2 border-[#111111] hover:bg-[#111111] hover:text-white flex items-center justify-center shrink-0 transition-all active:scale-90">${ic('bolt', 'w-4 h-4')}</button>
+        <div onclick="openEdit('${h.id}')" class="min-w-0 flex-1 cursor-pointer"><h3 class="text-sm font-semibold leading-snug truncate">${esc(h.name)}</h3><span class="text-[11px] font-medium text-[#8e8e93]">${meta}</span>${triggerLine}</div></div>
+      <button type="button" onclick="toggleHabit('${h.id}')" class="text-xs font-semibold text-white bg-[#111111] px-3 py-1.5 rounded-full active:scale-95 transition-transform shrink-0">Mark Done</button></div>`;
+  };
+  const breakRow = h => {
+    const meta = [ `${cleanDays(h)}d 🛡️`, h.category || '', h.goal ? `${h.goal}d goal` : '' ].filter(Boolean).join(' · ');
+    const triggerLine = (h.when || h.then)
+      ? `<p class="text-[11px] text-[#66666e] truncate mt-0.5">${h.when ? 'When ' + esc(h.when) : ''}${h.when && h.then ? ' → ' : ''}${h.then ? esc(h.then) : ''}</p>`
+      : '';
+    return `<div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl px-4 py-3.5 flex items-center justify-between gap-2">
+      <div onclick="openEdit('${h.id}')" class="flex items-center space-x-3 min-w-0 flex-1 cursor-pointer">
+        <div class="w-9 h-9 rounded-full bg-[#fff7ed] text-[#e11d2e] border border-[#fed7aa] flex items-center justify-center shrink-0">${ic('shield', 'w-[18px] h-[18px]')}</div>
+        <div class="min-w-0 flex-1"><h3 class="text-sm font-semibold leading-snug truncate">${esc(h.name)}</h3><span class="text-[11px] font-medium text-[#8e8e93]">${meta}</span>${triggerLine}</div></div>
+      <span class="text-xs font-medium text-[#e11d2e] bg-[#fff7ed] border border-[#fed7aa] px-2 py-0.5 rounded-full shrink-0">Active</span></div>`;
+  };
+
+  let week = '';
+  for (let i = 6; i >= 0; i--) {
+    const key = agoKey(i), st = status(key), isToday = i === 0;
+    const letter = parseKey(key).toLocaleDateString('en', { weekday: 'narrow' });
+    let cell;
+    if (st === 'full') cell = `<div class="w-full h-8 rounded-md bg-[#f95716]/20 flex items-center justify-center text-[#e11d2e]">${ic('check', 'w-3.5 h-3.5')}</div>`;
+    else if (st === 'partial') cell = `<div class="w-full h-8 rounded-md bg-[#f97316]/15 flex items-center justify-center text-[#f97316]"><span class="w-1.5 h-1.5 rounded-full bg-[#e11d2e]"></span></div>`;
+    else if (isToday) cell = `<div class="w-full h-8 rounded-md bg-[#111111] flex items-center justify-center text-white text-xs font-bold">•</div>`;
+    else cell = `<div class="w-full h-8 rounded-md bg-[#e5e5ea]/70"></div>`;
+    week += `<div class="flex flex-col items-center gap-1.5">${cell}<span class="text-[10px] ${isToday ? 'font-bold text-[#111111]' : 'font-medium text-[#8e8e93]'}">${letter}</span></div>`;
+  }
+  const weekActive = [...Array(7).keys()].filter(i => active(agoKey(i))).length;
+
+  const emptyState = `<div class="bg-[#f8f8fa] border border-dashed border-[#d4d4d8] rounded-2xl p-6 text-center space-y-4">
+    <div class="space-y-1">
+      <h3 class="font-display font-bold text-base text-[#111111]">Welcome${U && U.name ? ', ' + esc(U.name) : ''}! Your loop starts here.</h3>
+      <p class="text-xs text-[#66666e]">Add your first habit to start Day 1 of your personal streak.</p>
+    </div>
+    <div class="grid grid-cols-2 gap-2.5">
+      <button onclick="openNew('build')" class="py-3 px-3 rounded-xl bg-[#111111] text-white text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">${ic('plus', 'w-4 h-4')}<span>Build a Habit</span></button>
+      <button onclick="openNew('break')" class="py-3 px-3 rounded-xl bg-white border border-[#e5e5ea] text-[#111111] text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">${ic('shield', 'w-4 h-4 text-[#e11d2e]')}<span>Break a Habit</span></button>
+    </div>
+  </div>`;
+
+  const installBanner = isStandalone() ? '' : deferredPrompt
+    ? `<button onclick="openPhoneModal()" class="w-full bg-gradient-to-r from-[#e11d2e] to-[#f97316] text-white rounded-xl px-4 py-3 flex items-center justify-between text-xs font-semibold shadow-sm active:scale-[0.99] transition-transform"><span>📲 Ready! Tap here to Install FLEE App</span><span>Install →</span></button>`
+    : isInsecureHttpOnLan()
+    ? `<a href="/https" class="w-full bg-gradient-to-r from-[#e11d2e] to-[#f97316] text-white rounded-xl px-4 py-3 flex items-center justify-between text-xs font-semibold shadow-sm active:scale-[0.99] transition-transform"><span>🔒 Tap here first to switch to HTTPS so Android allows Install</span><span>Switch →</span></a>`
+    : '';
+
+  return `<div class="space-y-6">
+    ${installBanner}
+    <section class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-2xl p-6 flex items-center justify-between shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+      <div class="space-y-1">
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#e11d2e]"><span class="w-1.5 h-1.5 rounded-full bg-[#e11d2e] animate-pulse"></span>${label}</span>
+        <h2 class="text-2xl font-display font-bold tracking-tight">${doneN} of ${total} Done</h2>
+        <p class="text-xs text-[#8e8e93]">${total === 0 ? 'Add your first habit below to start Day 1' : left === 0 ? 'Everything done. Momentum locked in.' : left + (left === 1 ? ' habit' : ' habits') + ' remaining to keep momentum'}</p>
+      </div>
+      <div class="relative w-20 h-20 flex items-center justify-center shrink-0">
+        <svg class="w-20 h-20 -rotate-90" viewBox="0 0 72 72">
+          <defs><linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e11d2e"/><stop offset="100%" stop-color="#f97316"/></linearGradient></defs>
+          <circle cx="36" cy="36" r="28" fill="none" stroke="#e5e5ea" stroke-width="5.5"/>
+          <circle class="transition-all duration-500 ease-out" cx="36" cy="36" r="28" fill="none" stroke="url(#ringGrad)" stroke-width="5.5" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"/></svg>
+        <span class="absolute font-display font-bold text-lg ${pct === 100 && total > 0 ? 'text-[#e11d2e]' : ''}">${pct}%</span>
+      </div>
+    </section>
+    <section class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3 px-1"><span class="text-xs font-semibold uppercase tracking-wider text-[#8e8e93]">This Week</span><span class="text-xs font-medium text-[#e11d2e]">${weekActive} of 7 Days</span></div>
+      <div class="grid grid-cols-7 gap-2">${week}</div>
+    </section>
+    <section class="space-y-2.5">
+      <div class="flex items-center justify-between px-1 mb-1"><span class="text-xs font-semibold uppercase tracking-wider text-[#8e8e93]">Habits</span><span class="text-xs font-medium text-[#8e8e93]">${dateStr}</span></div>
+      ${b.map(buildRow).join('')}${k.map(breakRow).join('')}
+      ${total === 0 ? emptyState : ''}
+    </section></div>`;
+}
+
+function streaksHTML() {
+  const cur = curStreak(), best = Math.max(bestStreak(), cur), t = todayKey();
+  const pts = [];
+  for (let w = 5; w >= 0; w--) {
+    let c = 0; for (let d = 0; d < 7; d++) if (active(agoKey(w * 7 + d))) c++;
+    pts.push(c);
+  }
+  const line = pts.map((c, i) => `${i === 0 ? 'M' : 'L'}${i * 20} ${22 - c / 7 * 20}`).join(' ');
+  const lastY = 22 - pts[5] / 7 * 20;
+
+  let cells = '', act = 0;
+  for (let i = 0; i < 98; i++) {
+    const key = agoKey(97 - i), st = status(key), slipped = hadSlipOn(key);
+    if (st !== 'none') act++;
+    const bg = slipped ? 'bg-[#111111]' : st === 'full' ? 'bg-[#e11d2e]' : st === 'partial' ? 'bg-[#f97316]/45' : 'bg-[#e5e5ea]';
+    cells += `<div class="w-3 h-3 rounded-[2px] ${bg} ${i === 97 ? 'ring-2 ring-[#e11d2e] ring-offset-1' : ''}"></div>`;
+  }
+
+  const defs = [[21, 'Habit Formed', 'accent'], [30, 'Flow State', 'coral'], [50, 'Unstoppable', 'accent'], [100, 'Century', 'accent']];
+  let nextShown = false, unlocked = 0;
+  const ms = defs.map(([n, name, tone]) => {
+    if (best >= n) {
+      unlocked++;
+      const c = tone === 'coral' ? ['bg-[#fff7ed]', 'text-[#f97316]', 'border-[#f97316]/20'] : ['bg-[#fef2f2]', 'text-[#e11d2e]', 'border-[#e11d2e]/20'];
+      return `<div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl p-4 flex items-center justify-between"><div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg ${c[0]} ${c[1]} flex items-center justify-center shrink-0">${ic('medal', 'w-[18px] h-[18px]', true)}</div>
+        <div><div class="text-sm font-semibold">${n} Days · ${name}</div><div class="text-xs text-[#6e6e73]">Achieved</div></div></div>
+        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${c[0]} ${c[1]} border ${c[2]}">Unlocked</span></div>`;
+    }
+    if (!nextShown) {
+      nextShown = true;
+      return `<div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl p-4 flex flex-col gap-2.5"><div class="flex items-center justify-between"><div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-[#f0f0f3] text-[#6e6e73] flex items-center justify-center shrink-0">${ic('shield', 'w-[18px] h-[18px]')}</div>
+        <div><div class="text-sm font-semibold">${n} Days · ${name}</div><div class="text-xs text-[#6e6e73]">${n - cur} days remaining</div></div></div>
+        <span class="text-xs font-semibold text-[#e11d2e] font-display">${cur} / ${n}d</span></div>
+        <div class="w-full bg-[#e5e5ea] rounded-full h-1.5 overflow-hidden"><div class="bg-gradient-to-r from-[#e11d2e] to-[#f97316] h-full rounded-full" style="width:${Math.min(100, cur / n * 100)}%"></div></div></div>`;
+    }
+    return `<div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl p-4 flex items-center justify-between opacity-60"><div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-[#f0f0f3] text-[#8e8e93] flex items-center justify-center shrink-0">${ic('lock', 'w-[18px] h-[18px]')}</div>
+      <div><div class="text-sm font-semibold">${n} Days · ${name}</div><div class="text-xs text-[#8e8e93]">Locked</div></div></div>
+      <span class="text-xs font-medium text-[#8e8e93] font-display">${cur} / ${n}d</span></div>`;
+  }).join('');
+
+  return `<div class="space-y-5">
+    <div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-3"><span class="text-xs uppercase tracking-wider font-semibold text-[#8e8e93]">Current Streak</span>
+        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#fff7ed] text-[#e11d2e] border border-[#fed7aa]">Best: ${best}d</span></div>
+      <div class="flex items-baseline gap-2 mb-4"><span class="font-display text-5xl font-bold tracking-tight">${cur}</span><span class="font-display text-2xl font-bold text-[#e11d2e] tracking-tight">DAYS</span></div>
+      <div class="pt-3 border-t border-[#e5e5ea] flex items-center justify-between text-xs text-[#6e6e73]">
+        <div class="flex items-center gap-1.5 font-medium"><span class="w-1.5 h-1.5 rounded-full ${active(t) ? 'bg-[#e11d2e] animate-pulse' : 'bg-[#f97316]'}"></span><span>${active(t) ? 'Active today' : 'Complete a habit to extend it'}</span></div>
+        <svg class="w-24 h-5 text-[#e11d2e] overflow-visible" fill="none" viewBox="0 0 100 24"><path d="${line}" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/><circle cx="100" cy="${lastY}" r="2.5" fill="currentColor"/></svg>
+      </div>
+    </div>
+    <div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-3"><span class="text-xs uppercase tracking-wider font-semibold">Activity Matrix</span><span class="text-xs text-[#8e8e93]">${Math.round(act / 98 * 100)}% consistency</span></div>
+      <div class="overflow-x-auto pb-1 pt-1"><div class="inline-grid grid-rows-7 grid-flow-col gap-1 select-none">${cells}</div></div>
+      <div class="mt-3 flex items-center justify-between text-[11px] text-[#8e8e93]"><span>14 weeks ago</span>
+        <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-[2px] bg-[#e5e5ea]"></span><span class="w-2.5 h-2.5 rounded-[2px] bg-[#f97316]/45"></span><span class="w-2.5 h-2.5 rounded-[2px] bg-[#e11d2e]"></span><span class="w-2.5 h-2.5 rounded-[2px] bg-[#111111]" title="Slip logged"></span></div><span>Today</span></div>
+    </div>
+    <div class="space-y-3 mb-4">
+      <div class="flex items-center justify-between px-1"><h2 class="text-xs uppercase tracking-wider font-semibold text-[#6e6e73]">Milestones</h2><span class="text-xs font-semibold text-[#8e8e93]">${unlocked} of ${defs.length}</span></div>${ms}
+    </div></div>`;
+}
+
+function avoidHTML() {
+  const k = breaks();
+  if (!k.length) return `<div class="pt-16 text-center"><div class="mx-auto w-12 h-12 rounded-full bg-[#f8f8fa] border border-[#e5e5ea] flex items-center justify-center text-[#8e8e93] mb-3">${ic('shield', 'w-5 h-5')}</div>
+    <p class="text-sm font-semibold">Nothing to break yet</p><p class="text-xs text-[#8e8e93] mt-1 mb-4">Tap + and choose Break to track a habit you want to kill.</p>
+    <button onclick="openNew('break')" class="text-xs font-semibold text-white bg-[#111111] px-4 py-2 rounded-full">Add a habit to break</button></div>`;
+  const longest = Math.max(...k.map(cleanDays));
+  const totalClean = k.reduce((a, h) => a + lifetimeClean(h), 0);
+  const urges = k.reduce((a, h) => a + (h.urges || 0), 0);
+  const cards = k.map(h => {
+    const d = cleanDays(h), best = bestClean(h), life = lifetimeClean(h), pct = Math.min(100, d / h.goal * 100);
+    const recentSlip = (h.slipLog || [])[h.slipLog.length - 1];
+    const inRecovery = recentSlip && diffDays(recentSlip.date, todayKey()) <= 1;
+    return `<div class="bg-[#f8f8fa] border ${inRecovery ? 'border-[#f97316]/60' : 'border-[#e5e5ea]'} rounded-2xl p-4">
+      <div class="flex items-center justify-between mb-2"><div onclick="openEdit('${h.id}')" class="flex items-center gap-2 cursor-pointer min-w-0"><span class="text-[#e11d2e]">${ic('shield', 'w-5 h-5')}</span><h2 class="font-display font-semibold text-base truncate">${esc(h.name)}</h2></div>
+        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-white border border-[#e5e5ea] font-display shrink-0">${d} ${d === 1 ? 'Day' : 'Days'}</span></div>
+      <div class="flex items-center justify-between text-[11px] text-[#66666e] mb-2">
+        <span>Current: <strong class="text-[#111111]">${d}d</strong> · Best: <strong class="text-[#111111]">${best}d</strong> · <strong class="text-[#e11d2e]">${life}d</strong> overall</span>
+        <span>${h.urges || 0} resisted</span>
+      </div>
+      <div class="w-full bg-[#e5e5ea] rounded-full h-1 overflow-hidden mb-3"><div class="bg-gradient-to-r from-[#e11d2e] to-[#f97316] h-full rounded-full" style="width:${pct}%"></div></div>
+      ${inRecovery ? `<div class="mb-3 px-3 py-2 rounded-xl bg-[#fff7ed] border border-[#ffedd5] flex items-center justify-between text-xs"><span class="font-medium text-[#ea580c]">Never miss twice · ${esc(h.recoveryAction || 'Stay clean today')}</span><span class="text-[11px] font-semibold text-[#ea580c]">24h focus</span></div>` : ''}
+      ${h.then ? `<p class="text-[11px] text-[#66666e] mb-3">When ${esc(h.when || 'the urge hits')}, ${esc(h.then.charAt(0).toLowerCase() + h.then.slice(1))}.</p>` : ''}
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="openSOS('${h.id}')" class="bg-white border border-[#e5e5ea] hover:bg-stone-50 active:scale-[0.98] text-xs font-medium py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5"><span class="text-[#66666e]">${ic('wind', 'w-4 h-4')}</span><span>SOS Calm</span></button>
+        <button onclick="logUrge('${h.id}')" class="bg-[#111111] text-white hover:bg-stone-800 active:scale-[0.98] text-xs font-medium py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5"><span class="text-[#fb923c]">${ic('check', 'w-4 h-4')}</span><span>Defeated Urge</span></button>
+      </div>
+      <button onclick="openSlip('${h.id}')" class="mt-3 w-full text-center text-[11px] text-[#8e8e93] hover:text-[#111111]">Start again today · Log a slip</button></div>`;
+  }).join('');
+  return `<div><div class="pt-2 pb-6"><div class="text-xs uppercase tracking-wider text-[#66666e] font-medium mb-1.5">Streak Status</div>
+    <div class="flex items-baseline gap-2 mb-3"><span class="font-display font-bold text-5xl tracking-tight">${longest}</span><span class="font-display font-semibold text-lg uppercase tracking-wide">Days Clean</span></div>
+    <div class="grid grid-cols-2 gap-3 pt-3 border-t border-[#e5e5ea]">
+      <div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl p-3"><div class="text-[11px] text-[#66666e] uppercase font-medium tracking-wide">Clean days overall</div><div class="font-display font-semibold text-lg text-[#e11d2e] mt-0.5">${totalClean}</div></div>
+      <div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl p-3"><div class="text-[11px] text-[#66666e] uppercase font-medium tracking-wide">Defenses</div><div class="font-display font-semibold text-lg mt-0.5">${urges} resisted</div></div></div></div>
+    <div class="flex flex-col gap-3">${cards}</div></div>`;
+}
+
+function insightsHTML() {
+  const b = builds(), k = breaks(), cur = curStreak(), best = Math.max(bestStreak(), cur);
+  const completions = b.reduce((a, h) => a + Object.keys(h.log).length, 0);
+  let possible = 0, done = 0;
+  for (let i = 0; i < 30; i++) { const key = agoKey(i); b.forEach(h => { if (h.created <= key) { possible++; if (h.log[key]) done++; } }); }
+  const rate = possible ? Math.round(done / possible * 100) : 0;
+  const stat = (l, v) => `<div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl p-4"><div class="text-[11px] text-[#66666e] uppercase font-medium tracking-wide">${l}</div><div class="font-display font-bold text-2xl mt-1">${v}</div></div>`;
+
+  // Trigger insights from slip logs
+  const counts = {};
+  let totalSlips = 0;
+  k.forEach(h => (h.slipLog || []).forEach(s => { if (s.trigger) { counts[s.trigger] = (counts[s.trigger] || 0) + 1; totalSlips++; } }));
+  const topTriggers = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const triggerCard = topTriggers.length ? `<div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-2xl p-4 space-y-2.5">
+    <div class="flex items-center justify-between"><span class="text-xs font-semibold uppercase tracking-wider text-[#66666e]">Slip Triggers</span><span class="text-xs text-[#8e8e93]">${totalSlips} logged</span></div>
+    <p class="text-xs text-[#111111]">Most slips are triggered by <strong>${esc(topTriggers[0][0].toLowerCase())}</strong> (${topTriggers[0][1]} of ${totalSlips}). Plan your "Instead I will..." around that cue.</p>
+    <div class="flex flex-wrap gap-1.5 pt-1">${topTriggers.map(([t, n]) => `<span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-white border border-[#e5e5ea]">${esc(t)} · ${n}</span>`).join('')}</div>
+  </div>` : '';
+
+  const rows = S.habits.map(h => {
+    let right, pct;
+    if (h.type === 'build') {
+      let p = 0, d = 0; for (let i = 0; i < 30; i++) { const key = agoKey(i); if (h.created <= key) { p++; if (h.log[key]) d++; } }
+      pct = p ? Math.round(d / p * 100) : 0; right = pct + '% · 30d';
+    } else { const dd = cleanDays(h); pct = Math.min(100, Math.round(dd / h.goal * 100)); right = `${dd}d · ${lifetimeClean(h)}d total`; }
+    return `<div class="bg-[#f8f8fa] border border-[#e5e5ea] rounded-xl px-4 py-3"><div class="flex items-center justify-between mb-2">
+      <div onclick="openEdit('${h.id}')" class="flex items-center gap-2 min-w-0 cursor-pointer"><span class="${h.type === 'break' ? 'text-[#e11d2e]' : 'text-[#111111]'}">${ic(h.type === 'break' ? 'shield' : 'bolt', 'w-4 h-4')}</span><span class="text-sm font-semibold truncate">${esc(h.name)}</span></div>
+      <div class="flex items-center gap-3 shrink-0"><span class="text-xs text-[#66666e] font-display">${right}</span><button aria-label="Delete" onclick="removeHabit('${h.id}')" class="text-[#a1a1aa] hover:text-rose-500">${ic('trash', 'w-4 h-4')}</button></div></div>
+      <div class="w-full bg-[#e5e5ea] rounded-full h-1 overflow-hidden"><div class="bg-gradient-to-r from-[#e11d2e] to-[#f97316] h-full rounded-full" style="width:${pct}%"></div></div></div>`;
+  }).join('');
+  return `<div class="space-y-6">
+    <div class="grid grid-cols-2 gap-3">${stat('Current streak', cur + 'd')}${stat('Best streak', best + 'd')}${stat('Completions', completions)}${stat('30-day rate', rate + '%')}</div>
+    ${triggerCard}
+    <div class="space-y-2.5"><div class="flex items-center justify-between px-1"><span class="text-xs font-semibold uppercase tracking-wider text-[#8e8e93]">Your habits</span><span class="text-xs text-[#8e8e93]">${b.length} build · ${k.length} break</span></div>
+      ${rows || '<p class="text-sm text-[#8e8e93] text-center py-6">No habits yet.</p>'}</div>
+    <div class="flex items-center justify-center gap-4 text-xs text-[#8e8e93] pt-2 border-t border-[#e5e5ea]">
+      <button onclick="exportData()" class="hover:text-[#111111] pt-3">Export JSON</button><span class="pt-3">•</span>
+      <button onclick="clearAll()" class="hover:text-[#111111] pt-3">Start fresh</button><span class="pt-3">•</span>
+      <button onclick="logoutUser()" class="text-rose-500/80 hover:text-rose-500 pt-3">Sign out</button></div></div>`;
+}
+
+/* ---------- Actions ---------- */
+function toast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('toast-show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('toast-show'), 2200);
+}
+function toggleHabit(id) {
+  const h = S.habits.find(x => x.id === id); if (!h) return;
+  const t = todayKey();
+  if (h.log[t]) delete h.log[t]; else { h.log[t] = 1; if (navigator.vibrate) navigator.vibrate(20); toast(`${h.name} done · ${habitStreak(h)}d streak`); }
+  save(); render();
+}
+function logUrge(id) {
+  const h = S.habits.find(x => x.id === id); if (!h) return;
+  h.urges = (h.urges || 0) + 1; save(); render();
+  if (navigator.vibrate) navigator.vibrate([30, 20]);
+  toast(`Urge defeated · ${h.urges} total`);
+}
+
+/* ---------- Slip Reflection Sheet ---------- */
+const TRIGGERS = ['Stress', 'Boredom', 'Social', 'Tired', 'Autopilot', 'Other'];
+const RECOVERIES = ['Drink water', '10m walk', '90s breathe'];
+let slipHabitId = null, slipTrigger = 'Boredom', slipRecovery = 'Drink water';
+
+function openSlip(id) {
+  const h = S.habits.find(x => x.id === id); if (!h) return;
+  slipHabitId = id;
+  slipTrigger = 'Boredom';
+  slipRecovery = 'Drink water';
+  document.getElementById('slip-title').textContent = `${h.name} · That happens.`;
+  document.getElementById('slip-then').value = h.then || '';
+  paintSlip();
+  const sh = document.getElementById('slip-sheet');
+  sh.classList.remove('hidden'); sh.classList.add('flex');
+}
+function closeSlip() {
+  const sh = document.getElementById('slip-sheet');
+  sh.classList.add('hidden'); sh.classList.remove('flex');
+}
+function paintSlip() {
+  const h = S.habits.find(x => x.id === slipHabitId); if (!h) return;
+  const pillOn = 'py-2 px-3 rounded-xl border border-[#111111] bg-[#111111] text-white text-xs font-medium text-center transition-all';
+  const pillOff = 'py-2 px-3 rounded-xl border border-[#e5e5ea] bg-[#f8f8fa] text-[#66666e] hover:text-[#111111] text-xs font-medium text-center transition-all';
+  document.getElementById('slip-triggers').innerHTML = TRIGGERS.map(t =>
+    `<button type="button" class="${t === slipTrigger ? pillOn : pillOff}" onclick="slipTrigger='${t}';paintSlip()">${t}</button>`
+  ).join('');
+  document.getElementById('slip-recovery').innerHTML = RECOVERIES.map(r =>
+    `<button type="button" class="${r === slipRecovery ? pillOn : pillOff}" onclick="slipRecovery='${r}';paintSlip()">${r}</button>`
+  ).join('');
+
+  const canGrace = graceAvailable(h) && cleanDays(h) > 0;
+  document.getElementById('slip-actions').innerHTML = `
+    ${canGrace ? `<button type="button" onclick="confirmSlip(true)" class="w-full py-3 rounded-xl bg-[#fff7ed] border border-[#fed7aa] text-[#e11d2e] text-xs font-semibold flex items-center justify-center gap-1.5">${ic('shield', 'w-4 h-4')}<span>Use monthly Grace Slip (keep ${cleanDays(h)}d streak)</span></button>` : ''}
+    <button type="button" onclick="confirmSlip(false)" class="w-full py-3.5 rounded-xl bg-[#111111] text-white text-xs font-semibold">Start again today (save ${lifetimeClean(h)} clean days overall)</button>
+  `;
+}
+function confirmSlip(useGrace) {
+  const h = S.habits.find(x => x.id === slipHabitId); if (!h) return;
+  const cur = cleanDays(h);
+  h.bestClean = Math.max(h.bestClean || 0, cur);
+  const newThen = document.getElementById('slip-then').value.trim();
+  if (newThen) h.then = newThen;
+  h.recoveryAction = slipRecovery;
+  h.slipLog = h.slipLog || [];
+  h.slipLog.push({ date: todayKey(), trigger: slipTrigger, grace: !!useGrace });
+  h.slips = (h.slips || 0) + 1;
+
+  if (useGrace) {
+    h.lastGraceMonth = monthKey(todayKey());
+    save(); closeSlip(); render();
+    toast(`Grace used · ${cur}d streak protected. Never miss twice.`);
+  } else {
+    h.bankedClean = (h.bankedClean || 0) + cur;
+    h.cleanSince = todayKey();
+    save(); closeSlip(); render();
+    toast('Day 0. The streak restarts, the progress doesn\'t.');
+  }
+}
+
+function removeHabit(id) {
+  const h = S.habits.find(x => x.id === id); if (!h || !confirm(`Delete "${h.name}"?`)) return;
+  S.habits = S.habits.filter(x => x.id !== id); save(); render();
+}
+function exportData() {
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(S, null, 2));
+  a.download = `flee-${todayKey()}.json`; a.click();
+}
+function clearAll() { if (confirm('Delete all habits and start fresh?')) { S.habits = []; save(false, true); render(); } }
+
+/* SOS breathing */
+let sosId = null, breathTimer = null;
+function openSOS(id) {
+  sosId = id;
+  const m = document.getElementById('sos'); m.classList.remove('hidden'); m.classList.add('flex');
+  const c = document.getElementById('breath-circle'), tx = document.getElementById('breath-text');
+  let step = 0; tx.textContent = 'Inhale'; c.style.transform = 'scale(1)';
+  requestAnimationFrame(() => requestAnimationFrame(() => c.style.transform = 'scale(1.35)'));
+  clearInterval(breathTimer);
+  breathTimer = setInterval(() => {
+    step = (step + 1) % 4;
+    if (step === 0) { c.style.transform = 'scale(1.35)'; tx.textContent = 'Inhale'; }
+    else if (step === 1) tx.textContent = 'Hold';
+    else if (step === 2) { c.style.transform = 'scale(1)'; tx.textContent = 'Exhale'; }
+    else tx.textContent = 'Hold';
+  }, 2500);
+}
+function closeSOS() {
+  const m = document.getElementById('sos'); m.classList.add('hidden'); m.classList.remove('flex'); clearInterval(breathTimer);
+}
+function completeSOS() { const id = sosId; closeSOS(); if (id) logUrge(id); }
+
+/* New & Edit habit */
+const CATS = ['Focus', 'Body', 'Mind', 'Health'], GOALS = [7, 21, 66, 100];
+let nMode = 'build', nCat = 'Focus', nGoal = 21, editId = null;
+function openNew(mode) {
+  editId = null;
+  nMode = mode || 'build'; nCat = 'Focus'; nGoal = 21;
+  ['habit-input', 'when-input', 'then-input'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('new-title').textContent = 'New Habit';
+  document.getElementById('delete-habit-wrap').classList.add('hidden');
+  document.getElementById('new-back').innerHTML = ic('arrowLeft', 'w-[22px] h-[22px]');
+  document.getElementById('new-close').innerHTML = ic('x', 'w-5 h-5');
+  document.getElementById('trigger-arrow').innerHTML = ic('arrowDown', 'w-[18px] h-[18px]');
+  const n = document.getElementById('new'); n.classList.remove('hidden'); n.classList.add('flex');
+  paintNew();
+}
+function openEdit(id) {
+  const h = S.habits.find(x => x.id === id);
+  if (!h) return;
+  editId = h.id;
+  nMode = h.type || 'build';
+  nCat = CATS.includes(h.category) ? h.category : 'Focus';
+  nGoal = GOALS.includes(h.goal) ? h.goal : 21;
+  document.getElementById('habit-input').value = h.name || '';
+  document.getElementById('when-input').value = h.when || '';
+  document.getElementById('then-input').value = h.then || '';
+  document.getElementById('new-title').textContent = 'Edit Habit';
+  document.getElementById('delete-habit-wrap').classList.remove('hidden');
+  document.getElementById('new-back').innerHTML = ic('arrowLeft', 'w-[22px] h-[22px]');
+  document.getElementById('new-close').innerHTML = ic('x', 'w-5 h-5');
+  document.getElementById('trigger-arrow').innerHTML = ic('arrowDown', 'w-[18px] h-[18px]');
+  const n = document.getElementById('new'); n.classList.remove('hidden'); n.classList.add('flex');
+  paintNew();
+}
+function deleteEditingHabit() {
+  if (!editId) return;
+  const id = editId;
+  const h = S.habits.find(x => x.id === id);
+  if (!h || !confirm(`Delete "${h.name}"?`)) return;
+  S.habits = S.habits.filter(x => x.id !== id);
+  save(); closeNew(); render();
+  toast('Habit deleted');
+}
+function closeNew() { editId = null; const n = document.getElementById('new'); n.classList.add('hidden'); n.classList.remove('flex'); }
+function setMode(m) { nMode = m; paintNew(); }
+function paintNew() {
+  const on = 'flex-1 py-2 rounded-full text-[13px] font-medium transition-all bg-white text-[#111111] shadow-sm';
+  const off = 'flex-1 py-2 rounded-full text-[13px] font-medium transition-all text-[#71717a] hover:text-[#111111]';
+  document.getElementById('toggle-build').className = nMode === 'build' ? on : off;
+  document.getElementById('toggle-break').className = nMode === 'break' ? on : off;
+  const b = nMode === 'build';
+  document.getElementById('habit-input').placeholder = b ? 'What habit do you want to start?' : 'What habit do you want to break?';
+  document.getElementById('when-label').textContent = b ? 'When I...' : 'When I feel the urge to...';
+  document.getElementById('then-label').textContent = b ? 'I will...' : 'Instead I will...';
+  document.getElementById('when-input').placeholder = b ? 'e.g. Morning coffee' : 'e.g. scroll after dinner';
+  document.getElementById('then-input').placeholder = b ? 'e.g. Read 10 pages' : 'e.g. Go for a short walk';
+  document.getElementById('cta-btn').innerHTML = editId
+    ? `<span>Save Changes</span>${ic('check', 'w-[18px] h-[18px]')}`
+    : b ? `<span>Start Streak</span>${ic('arrowRight', 'w-[18px] h-[18px]')}` : `<span>Break Habit</span>${ic('shield', 'w-[18px] h-[18px]')}`;
+  document.getElementById('cat-row').innerHTML = CATS.map(c => `<button class="px-4 py-2 rounded-full text-[13px] font-medium transition-colors ${c === nCat ? 'bg-[#111111] text-white' : 'bg-[#f8f8fa] border border-[#e5e5ea] text-[#71717a] hover:text-[#111111]'}" onclick="nCat='${c}';paintNew()">${c}</button>`).join('');
+  document.getElementById('goal-row').innerHTML = GOALS.map(g => `<button class="py-3 rounded-2xl border text-[13px] font-medium text-center transition-all ${g === nGoal ? 'border-[#111111] bg-[#111111] text-white shadow-sm' : 'border-[#e5e5ea] bg-[#f8f8fa] text-[#71717a]'}" onclick="nGoal=${g};paintNew()">${g} Days</button>`).join('');
+}
+function createHabit() {
+  const input = document.getElementById('habit-input'), name = input.value.trim();
+  if (!name) { input.classList.add('shake', 'border-rose-400'); setTimeout(() => input.classList.remove('shake', 'border-rose-400'), 400); input.focus(); return; }
+  const whenVal = document.getElementById('when-input').value.trim();
+  const thenVal = document.getElementById('then-input').value.trim();
+  if (editId) {
+    const h = S.habits.find(x => x.id === editId);
+    if (h) {
+      h.name = name;
+      h.type = nMode;
+      h.category = nCat;
+      h.when = whenVal;
+      h.then = thenVal;
+      h.goal = nGoal;
+      if (nMode === 'build') {
+        h.log = h.log || {};
+      } else {
+        h.cleanSince = h.cleanSince || todayKey();
+        h.bestClean = h.bestClean || 0;
+        h.bankedClean = h.bankedClean || 0;
+        h.urges = h.urges || 0;
+        h.slips = h.slips || 0;
+        h.slipLog = h.slipLog || [];
+      }
+      save(); closeNew(); render();
+      toast('Habit updated');
+      return;
+    }
+  }
+  const base = { id: uid(), type: nMode, name, category: nCat, when: whenVal, then: thenVal, goal: nGoal, created: todayKey() };
+  S.habits.push(nMode === 'build' ? { ...base, log: {} } : { ...base, cleanSince: todayKey(), bestClean: 0, bankedClean: 0, urges: 0, slips: 0, slipLog: [] });
+  save(); closeNew(); setView(nMode === 'break' ? 'avoid' : 'today');
+  toast(nMode === 'build' ? 'Streak started' : "Day 0 — you've got this");
+}
+
+/* Refresh when the day rolls over & keep data synced */
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    syncCloud();
+    render();
+  }
+});
+window.addEventListener('online', () => syncCloud());
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) { refreshing = true; window.location.reload(); }
+  });
+  navigator.serviceWorker.register('sw.js?v=1795423752', { updateViaCache: 'none' }).then(reg => {
+    try { reg.update(); } catch (e) {}
+  }).catch(() => {});
+  if (window.caches) {
+    caches.keys().then(ks => ks.forEach(k => { if (k !== 'habit-loop-v1795423752') caches.delete(k); })).catch(() => {});
+  }
+}
+render();
+restoreFromBackupIfNeeded();
+</script>
+</body>
+</html>

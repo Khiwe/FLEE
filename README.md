@@ -1,7 +1,6 @@
-# FLEE
 <div align="center">
 
-<img src="/Users/khiwe/Downloads/Websites/life-rpg/icon-192.png" alt="FLEE App Icon" width="96" height="96" style="border-radius: 22px;" />
+<img src="icon-192.png" alt="FLEE App Icon" width="96" height="96" style="border-radius: 22px;" />
 
 # FLEE
 
@@ -9,7 +8,7 @@
 
 [![Live App](https://img.shields.io/badge/Live%20App-Cloudflare%20Workers-f97316?style=for-the-badge&logo=cloudflare&logoColor=white)](https://habit-loop.nkentekhiwe.workers.dev)
 [![PWA Ready](https://img.shields.io/badge/PWA-Installable%20%26%20Offline--First-e11d2e?style=for-the-badge)](https://habit-loop.nkentekhiwe.workers.dev)
-[![Zero Dependencies](https://img.shields.io/badge/Dependencies-Zero%20Build%20Step-111111?style=for-the-badge)](#architecture)
+[![Zero Dependencies](https://img.shields.io/badge/Dependencies-Zero%20Build%20Step-111111?style=for-the-badge)](#architecture--engineering-highlights)
 [![License: MIT](https://img.shields.io/badge/License-MIT-52525b?style=for-the-badge)](LICENSE)
 
 [**Open Live App →**](https://habit-loop.nkentekhiwe.workers.dev)
@@ -59,8 +58,8 @@ flowchart LR
    - Listens for `controllerchange` in the client and sets `updateViaCache: 'none'` + explicit `_headers` so installed PWAs hot-reload automatically after deployments.
 4. **Native Android & iOS Installability:**
    - Captures `beforeinstallprompt` for a one-tap native Android WebAPK install flow alongside `apple-mobile-web-app-capable` metadata and 192×192 / 512×512 maskable PNG icons.
-5. **Automated Edge CI/CD:**
-   - Configured with `wrangler.jsonc` and GitHub Actions (`.github/workflows/deploy.yml`) to deploy static assets globally to Cloudflare Workers on every push to `main`.
+5. **Automated Edge Deployment:**
+   - Configured with `wrangler.jsonc` and `_headers` to deploy static assets globally to Cloudflare Workers via Wrangler CLI.
 
 ---
 
@@ -68,15 +67,14 @@ flowchart LR
 
 ```text
 .
-├── index.html                   # Single-file SPA (UI, state engine, IndexedDB/localStorage sync, SVG icons)
-├── manifest.json                # Web App Manifest (standalone display, maskable PNG icons, scope)
-├── sw.js                        # Service Worker (network-first + offline cache fallback)
-├── _headers                     # Cloudflare edge cache-control & Service-Worker-Allowed headers
-├── wrangler.jsonc               # Cloudflare Workers static asset deployment config
-├── icon-192.png                 # 192x192 app & maskable icon
-├── icon-512.png                 # 512x512 app & maskable icon
-├── .github/workflows/deploy.yml # Automated CI/CD deployment to Cloudflare Workers
-└── LICENSE                      # MIT License
+├── index.html          # Single-file SPA (UI, state engine, IndexedDB/localStorage sync, SVG icons)
+├── manifest.json       # Web App Manifest (standalone display, maskable PNG icons, scope)
+├── sw.js               # Service Worker (network-first + offline cache fallback)
+├── _headers            # Cloudflare edge cache-control & Service-Worker-Allowed headers
+├── wrangler.jsonc      # Cloudflare Workers static asset deployment config
+├── icon-192.png        # 192x192 app & maskable icon
+├── icon-512.png        # 512x512 app & maskable icon
+└── LICENSE             # MIT License
 ```
 
 ---

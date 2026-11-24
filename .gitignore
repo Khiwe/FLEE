@@ -1,0 +1,7 @@
+.DS_Store
+*.tmp
+.wrangler/
+node_modules/
+users_db.json
+tunnel.json
+*.log
